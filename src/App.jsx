@@ -14,7 +14,6 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Progress } from "@/components/ui/progress"
@@ -91,21 +90,7 @@ function Shell({ pool, children }) {
   )
 }
 
-function detectProvider(key) {
-  if (key.startsWith("sk")) return "openai"
-  if (key.startsWith("AI")) return "gemini"
-  return null
-}
-
-function Welcome({ apiKey, setApiKey, onStart }) {
-  const provider = detectProvider(apiKey.trim())
-  const canStart = provider !== null && apiKey.trim().length > 10
-  const hint = provider === "openai"
-    ? "OpenAI key detected"
-    : provider === "gemini"
-    ? "Gemini key detected"
-    : "Paste an OpenAI (sk-…) or Gemini (AIza…) key"
-
+function Welcome({ onStart }) {
   return (
     <Card className="animate-in fade-in zoom-in-95 duration-300">
       <CardHeader className="text-center">
@@ -115,22 +100,8 @@ function Welcome({ apiKey, setApiKey, onStart }) {
           show up for you, plus some tips to try.
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-2">
-        <Label htmlFor="api-key">API key</Label>
-        <Input
-          id="api-key"
-          type="password"
-          placeholder="sk-… or AIza…"
-          value={apiKey}
-          onChange={(e) => setApiKey(e.target.value)}
-          autoComplete="off"
-        />
-        <p className={cn("text-xs", provider ? "text-primary" : "text-muted-foreground")}>
-          {hint}
-        </p>
-      </CardContent>
       <CardFooter>
-        <Button className="w-full" size="lg" disabled={!canStart} onClick={onStart}>
+        <Button className="w-full" size="lg" onClick={onStart}>
           Let's begin
         </Button>
       </CardFooter>
@@ -289,9 +260,10 @@ function ErrorCard({ message, onRetry, onRestart }) {
   )
 }
 
+const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY
+
 export default function App() {
   const [phase, setPhase] = useState("welcome")
-  const [apiKey, setApiKey] = useState("")
   const [answers, setAnswers] = useState(Array(QUESTIONS.length).fill(null))
   const [result, setResult] = useState(null)
   const [error, setError] = useState(null)
@@ -311,15 +283,15 @@ export default function App() {
     setError(null)
     try {
       const data = await analyzeAnswers({
-        provider: detectProvider(apiKey.trim()),
-        apiKey,
+        provider: "gemini",
+        apiKey: GEMINI_API_KEY,
         answers: finalAnswers,
         questions: QUESTIONS,
       })
       setResult(data)
       setPhase("result")
     } catch (e) {
-      setError(e.message || "Couldn't reach the AI. Check your API key and try again.")
+      setError(e.message || "Couldn't reach the AI. Try again.")
       setPhase("error")
     }
   }
@@ -365,11 +337,7 @@ export default function App() {
   return (
     <Shell pool={iconPool}>
       {phase === "welcome" && (
-        <Welcome
-          apiKey={apiKey}
-          setApiKey={setApiKey}
-          onStart={() => setPhase("quiz")}
-        />
+        <Welcome onStart={() => setPhase("quiz")} />
       )}
       {phase === "quiz" && (
         <Quiz
