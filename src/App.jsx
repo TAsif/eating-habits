@@ -1,5 +1,10 @@
 import { useEffect, useState } from "react"
-import { Heart, Sparkles, ArrowLeft, RotateCcw, Loader2 } from "lucide-react"
+import { motion } from "motion/react"
+import {
+  Heart, Sparkles, ArrowLeft, RotateCcw, Loader2,
+  Apple, Coffee, Cookie, Utensils, Cherry, Banana,
+  Star, Smile, Sun, Leaf, Moon, Salad,
+} from "lucide-react"
 import {
   Card,
   CardContent,
@@ -18,10 +23,68 @@ import { cn } from "@/lib/utils"
 import { QUESTIONS } from "@/lib/questions"
 import { analyzeAnswers } from "@/lib/analyze"
 
-function Shell({ children }) {
+const ICON_POOLS = {
+  welcome: [Heart, Sparkles, Apple, Coffee, Cookie, Utensils],
+  early:   [Apple, Cherry, Banana, Cookie, Coffee, Utensils],
+  middle:  [Heart, Smile, Star, Sparkles, Moon, Sun],
+  late:    [Leaf, Sun, Salad, Star, Sparkles, Heart],
+  result:  [Heart, Star, Sparkles, Smile, Sun, Cherry],
+}
+
+const FLOAT_CONFIGS = [
+  { left: "4%",  size: 32, duration: 13, delay: 0   },
+  { left: "13%", size: 24, duration: 10, delay: 3.5 },
+  { left: "23%", size: 38, duration: 15, delay: 7   },
+  { left: "33%", size: 28, duration: 11, delay: 1.5 },
+  { left: "43%", size: 34, duration: 12, delay: 9   },
+  { left: "53%", size: 24, duration: 14, delay: 4   },
+  { left: "63%", size: 30, duration: 10, delay: 2   },
+  { left: "73%", size: 42, duration: 13, delay: 6.5 },
+  { left: "83%", size: 28, duration: 11, delay: 5   },
+  { left: "91%", size: 34, duration: 12, delay: 1   },
+  { left: "50%", size: 26, duration: 14, delay: 11  },
+  { left: "8%",  size: 32, duration: 16, delay: 8   },
+]
+
+function FloatingIcon({ cfg, Icon }) {
   return (
-    <div className="min-h-svh w-full bg-gradient-to-br from-rose-50 via-background to-pink-50 dark:from-rose-950/20 dark:via-background dark:to-pink-950/20 px-4 py-8 sm:py-12 flex items-center justify-center">
-      <div className="w-full max-w-xl">
+    <motion.div
+      className="absolute left-0 top-0 text-rose-400 dark:text-rose-300"
+      style={{ left: cfg.left }}
+      animate={{
+        y: ["100vh", "-10vh"],
+        opacity: [0, 0.22, 0.22, 0],
+        rotate: [-8, 8],
+        scale: [0.9, 1.1],
+      }}
+      transition={{
+        duration: cfg.duration,
+        delay: cfg.delay,
+        repeat: Infinity,
+        ease: "linear",
+        times: [0, 0.1, 0.9, 1],
+      }}
+    >
+      <Icon width={cfg.size} height={cfg.size} />
+    </motion.div>
+  )
+}
+
+function FloatingBackground({ pool }) {
+  return (
+    <div className="pointer-events-none absolute inset-0 overflow-hidden" style={{ zIndex: 0 }}>
+      {FLOAT_CONFIGS.map((cfg, i) => (
+        <FloatingIcon key={i} cfg={cfg} Icon={pool[i % pool.length]} />
+      ))}
+    </div>
+  )
+}
+
+function Shell({ pool, children }) {
+  return (
+    <div className="relative min-h-svh w-full bg-gradient-to-br from-rose-50 via-background to-pink-50 dark:from-rose-950/20 dark:via-background dark:to-pink-950/20 px-4 py-8 sm:py-12 flex items-center justify-center overflow-hidden">
+      <FloatingBackground pool={pool} />
+      <div className="relative w-full max-w-xl" style={{ zIndex: 10 }}>
         {children}
       </div>
     </div>
@@ -292,8 +355,15 @@ export default function App() {
     setPhase("welcome")
   }
 
+  const iconPool =
+    phase === "welcome"               ? ICON_POOLS.welcome :
+    phase === "result"                ? ICON_POOLS.result  :
+    current < 5                       ? ICON_POOLS.early   :
+    current < 10                      ? ICON_POOLS.middle  :
+                                        ICON_POOLS.late
+
   return (
-    <Shell>
+    <Shell pool={iconPool}>
       {phase === "welcome" && (
         <Welcome
           apiKey={apiKey}
