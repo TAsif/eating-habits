@@ -260,8 +260,6 @@ function ErrorCard({ message, onRetry, onRestart }) {
   )
 }
 
-const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY
-
 export default function App() {
   const [phase, setPhase] = useState("welcome")
   const [answers, setAnswers] = useState(Array(QUESTIONS.length).fill(null))
@@ -283,8 +281,6 @@ export default function App() {
     setError(null)
     try {
       const data = await analyzeAnswers({
-        provider: "gemini",
-        apiKey: GEMINI_API_KEY,
         answers: finalAnswers,
         questions: QUESTIONS,
       })

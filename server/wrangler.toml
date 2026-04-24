@@ -1,0 +1,6 @@
+name = "nutrition-survey-analyze"
+main = "worker.js"
+compatibility_date = "2024-11-06"
+
+[vars]
+ALLOWED_ORIGIN = "https://www.nutritionsurvey.site"
