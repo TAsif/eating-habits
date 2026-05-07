@@ -15,6 +15,11 @@ Rules:
 - Never diagnose a clinical disorder. If scores are very high, gently suggest speaking with a professional in one of the tips.
 - Do not include any text outside the JSON object.`
 
+const MODELS = [
+  "gpt-5.4-mini",
+  "gpt-5.4-nano",
+]
+
 function buildUserMessage(questions, answers) {
   return questions
     .map((q, i) => {
@@ -33,6 +38,24 @@ function corsHeaders(origin, allowedOrigin) {
     "Access-Control-Allow-Headers": "Content-Type",
     "Vary": "Origin",
   }
+}
+
+async function callOpenAI(model, userMessage, apiKey) {
+  return fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model,
+      response_format: { type: "json_object" },
+      messages: [
+        { role: "system", content: SYSTEM_PROMPT },
+        { role: "user", content: userMessage },
+      ],
+    }),
+  })
 }
 
 export default {
@@ -78,34 +101,24 @@ export default {
 
     const userMessage = buildUserMessage(questions, answers)
 
-    const geminiRes = await fetch(
-      "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-goog-api-key": env.GEMINI_API_KEY,
-        },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: userMessage }] }],
-          systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
-          generationConfig: { responseMimeType: "application/json" },
-        }),
-      }
-    )
+    let aiRes
+    for (const model of MODELS) {
+      aiRes = await callOpenAI(model, userMessage, env.OPENAI_API_KEY)
+      if (aiRes.status !== 503) break
+    }
 
-    if (!geminiRes.ok) {
-      const errText = await geminiRes.text()
-      return new Response(JSON.stringify({ error: "Gemini request failed", detail: errText }), {
+    if (!aiRes.ok) {
+      const errText = await aiRes.text()
+      return new Response(JSON.stringify({ error: "AI request failed", detail: errText }), {
         status: 502,
         headers: { ...headers, "Content-Type": "application/json" },
       })
     }
 
-    const geminiJson = await geminiRes.json()
-    const text = geminiJson?.candidates?.[0]?.content?.parts?.[0]?.text
+    const aiJson = await aiRes.json()
+    const text = aiJson?.choices?.[0]?.message?.content
     if (!text) {
-      return new Response(JSON.stringify({ error: "Empty Gemini response" }), {
+      return new Response(JSON.stringify({ error: "Empty AI response" }), {
         status: 502,
         headers: { ...headers, "Content-Type": "application/json" },
       })
@@ -115,7 +128,7 @@ export default {
     try {
       parsed = JSON.parse(text)
     } catch {
-      return new Response(JSON.stringify({ error: "Gemini returned non-JSON" }), {
+      return new Response(JSON.stringify({ error: "AI returned non-JSON" }), {
         status: 502,
         headers: { ...headers, "Content-Type": "application/json" },
       })
